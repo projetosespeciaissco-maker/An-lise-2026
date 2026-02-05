@@ -25,15 +25,34 @@ header {
   padding: 20px;
 }
 
-input, textarea, select, button {
+/* CAMPOS ALINHADOS */
+input,
+textarea,
+select {
   width: 100%;
-  padding: 10px;
+  box-sizing: border-box;
+  padding: 12px;
   margin-top: 10px;
   font-size: 14px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  resize: vertical;
 }
 
 button {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 12px;
+  margin-top: 10px;
+  font-size: 14px;
   cursor: pointer;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  background: #ffffff;
+}
+
+button:hover {
+  background: #f0f0f0;
 }
 
 .container {
@@ -85,6 +104,7 @@ button {
 .actions button {
   width: auto;
   margin-top: 5px;
+  padding: 6px 10px;
 }
 </style>
 </head>
