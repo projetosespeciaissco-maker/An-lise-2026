@@ -1,0 +1,104 @@
+
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Clipping Jornalístico</title>
+<style>
+body{font-family:Arial;background:#f4f6f8;margin:0}
+#login{display:flex;height:100vh;align-items:center;justify-content:center;flex-direction:column}
+#app{display:none;padding:20px}
+input,button{padding:10px;margin:5px}
+button{cursor:pointer}
+.card{background:#fff;padding:10px;margin-bottom:8px;border-radius:6px}
+.negativo{color:#e74c3c}
+.neutro{color:#f1c40f}
+.positivo{color:#2ecc71}
+</style>
+</head>
+<body>
+
+<div id="login">
+  <h2>🔒 Acesso restrito</h2>
+  <input type="password" id="senha" placeholder="Digite a senha">
+  <button onclick="verificarSenha()">Entrar</button>
+  <p id="erro" style="color:red;"></p>
+</div>
+
+<div id="app">
+  <h2>📊 Clipping Jornalístico</h2>
+  <button onclick="nova('positivo')">➕ Positivo</button>
+  <button onclick="nova('neutro')">➕ Neutro</button>
+  <button onclick="nova('negativo')">➕ Negativo</button>
+  <button onclick="exportar()">📤 Exportar Excel</button>
+  <div id="lista"></div>
+</div>
+
+<script>
+const SENHA_CORRETA = "clipping2026";
+let dados = JSON.parse(localStorage.getItem("clipping")) || [];
+
+function verificarSenha(){
+  if(senha.value === SENHA_CORRETA){
+    localStorage.setItem("acesso","ok");
+    liberar();
+  } else {
+    erro.innerText = "Senha incorreta ❌";
+  }
+}
+
+function liberar(){
+  login.style.display="none";
+  app.style.display="block";
+  render();
+}
+
+if(localStorage.getItem("acesso")==="ok") liberar();
+
+function nova(tipo){
+  const titulo = prompt("Título da matéria:");
+  const link = prompt("Link:");
+  if(!titulo || !link) return;
+  dados.push({titulo,link,tipo,data:new Date().toLocaleDateString()});
+  salvar();
+}
+
+function salvar(){
+  localStorage.setItem("clipping",JSON.stringify(dados));
+  render();
+}
+
+function excluir(i){
+  dados.splice(i,1);
+  salvar();
+}
+
+function render(){
+  lista.innerHTML="";
+  dados.forEach((m,i)=>{
+    lista.innerHTML += `
+      <div class="card">
+        <strong class="${m.tipo}">[${m.tipo.toUpperCase()}]</strong> ${m.titulo}<br>
+        <a href="${m.link}" target="_blank">${m.link}</a><br>
+        <small>${m.data}</small><br>
+        <button onclick="excluir(${i})">🗑️ Excluir</button>
+      </div>
+    `;
+  });
+}
+
+function exportar(){
+  let csv="Tipo,Data,Titulo,Link\n";
+  dados.forEach(m=>{
+    csv+=`${m.tipo},${m.data},"${m.titulo}",${m.link}\n`;
+  });
+  const blob=new Blob([csv],{type:"text/csv"});
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(blob);
+  a.download="clipping.csv";
+  a.click();
+}
+</script>
+
+</body>
+</html>
