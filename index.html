@@ -1,101 +1,212 @@
-
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-br">
 <head>
 <meta charset="UTF-8">
 <title>Clipping Jornalístico</title>
+
 <style>
-body{font-family:Arial;background:#f4f6f8;margin:0}
-#login{display:flex;height:100vh;align-items:center;justify-content:center;flex-direction:column}
-#app{display:none;padding:20px}
-input,button{padding:10px;margin:5px}
-button{cursor:pointer}
-.card{background:#fff;padding:10px;margin-bottom:8px;border-radius:6px}
-.negativo{color:#e74c3c}
-.neutro{color:#f1c40f}
-.positivo{color:#2ecc71}
+body {
+  font-family: Arial, sans-serif;
+  margin: 0;
+  background: #f4f6f8;
+}
+
+header {
+  background: #1f2937;
+  color: white;
+  padding: 15px;
+  text-align: center;
+  font-size: 18px;
+}
+
+.hidden { display: none; }
+
+#login, #app {
+  padding: 20px;
+}
+
+input, textarea, select, button {
+  width: 100%;
+  padding: 10px;
+  margin-top: 10px;
+  font-size: 14px;
+}
+
+button {
+  cursor: pointer;
+}
+
+.container {
+  display: flex;
+  gap: 20px;
+}
+
+.form {
+  width: 30%;
+  background: white;
+  padding: 15px;
+  border-radius: 8px;
+}
+
+.columns {
+  width: 70%;
+  display: flex;
+  gap: 10px;
+}
+
+.column {
+  flex: 1;
+  background: white;
+  padding: 10px;
+  border-radius: 8px;
+}
+
+.column h3 {
+  text-align: center;
+}
+
+.item {
+  border-bottom: 1px solid #ddd;
+  padding: 6px 0;
+}
+
+.item a {
+  font-size: 12px;
+  color: #2563eb;
+  word-break: break-all;
+}
+
+.item small {
+  color: #666;
+}
+
+.actions button {
+  width: auto;
+  margin-top: 5px;
+}
 </style>
 </head>
+
 <body>
 
+<header>📊 Clipping Jornalístico</header>
+
 <div id="login">
-  <h2>🔒 Acesso restrito</h2>
+  <h3>🔒 Login</h3>
   <input type="password" id="senha" placeholder="Digite a senha">
-  <button onclick="verificarSenha()">Entrar</button>
-  <p id="erro" style="color:red;"></p>
+  <button onclick="login()">Entrar</button>
 </div>
 
-<div id="app">
-  <h2>📊 Clipping Jornalístico</h2>
-  <button onclick="nova('positivo')">➕ Positivo</button>
-  <button onclick="nova('neutro')">➕ Neutro</button>
-  <button onclick="nova('negativo')">➕ Negativo</button>
-  <button onclick="exportar()">📤 Exportar Excel</button>
-  <div id="lista"></div>
+<div id="app" class="hidden">
+  <div class="container">
+
+    <div class="form">
+      <h3>➕ Nova Matéria</h3>
+
+      <input id="titulo" placeholder="Título da matéria">
+      <textarea id="link" rows="3" placeholder="Cole o link aqui"></textarea>
+
+      <select id="tipo">
+        <option value="positivo">🟢 Positivo</option>
+        <option value="neutro">⚪ Neutro</option>
+        <option value="negativo">🔴 Negativo</option>
+      </select>
+
+      <button onclick="salvar()">Salvar</button>
+      <button onclick="exportar()">📤 Exportar CSV</button>
+    </div>
+
+    <div class="columns">
+      <div class="column">
+        <h3>🟢 Positivo</h3>
+        <div id="positivo"></div>
+      </div>
+
+      <div class="column">
+        <h3>⚪ Neutro</h3>
+        <div id="neutro"></div>
+      </div>
+
+      <div class="column">
+        <h3>🔴 Negativo</h3>
+        <div id="negativo"></div>
+      </div>
+    </div>
+
+  </div>
 </div>
 
 <script>
 const SENHA_CORRETA = "clipping2026";
-let dados = JSON.parse(localStorage.getItem("clipping")) || [];
+let dados = JSON.parse(localStorage.getItem("clipping") || "[]");
 
-function verificarSenha(){
-  if(senha.value === SENHA_CORRETA){
-    localStorage.setItem("acesso","ok");
-    liberar();
+function login() {
+  if (senha.value === SENHA_CORRETA) {
+    loginDiv = document.getElementById("login");
+    appDiv = document.getElementById("app");
+    loginDiv.classList.add("hidden");
+    appDiv.classList.remove("hidden");
+    render();
   } else {
-    erro.innerText = "Senha incorreta ❌";
+    alert("Senha incorreta");
   }
 }
 
-function liberar(){
-  login.style.display="none";
-  app.style.display="block";
+function salvar() {
+  if (!titulo.value || !link.value) {
+    alert("Preencha título e link");
+    return;
+  }
+
+  dados.push({
+    titulo: titulo.value,
+    link: link.value,
+    tipo: tipo.value,
+    data: new Date().toLocaleDateString()
+  });
+
+  localStorage.setItem("clipping", JSON.stringify(dados));
+  titulo.value = "";
+  link.value = "";
   render();
 }
 
-if(localStorage.getItem("acesso")==="ok") liberar();
-
-function nova(tipo){
-  const titulo = prompt("Título da matéria:");
-  const link = prompt("Link:");
-  if(!titulo || !link) return;
-  dados.push({titulo,link,tipo,data:new Date().toLocaleDateString()});
-  salvar();
-}
-
-function salvar(){
-  localStorage.setItem("clipping",JSON.stringify(dados));
+function excluir(index) {
+  dados.splice(index, 1);
+  localStorage.setItem("clipping", JSON.stringify(dados));
   render();
 }
 
-function excluir(i){
-  dados.splice(i,1);
-  salvar();
-}
+function render() {
+  ["positivo", "neutro", "negativo"].forEach(id => {
+    document.getElementById(id).innerHTML = "";
+  });
 
-function render(){
-  lista.innerHTML="";
-  dados.forEach((m,i)=>{
-    lista.innerHTML += `
-      <div class="card">
-        <strong class="${m.tipo}">[${m.tipo.toUpperCase()}]</strong> ${m.titulo}<br>
-        <a href="${m.link}" target="_blank">${m.link}</a><br>
-        <small>${m.data}</small><br>
+  dados.forEach((item, i) => {
+    const div = document.createElement("div");
+    div.className = "item";
+    div.innerHTML = `
+      <strong>${item.titulo}</strong><br>
+      <a href="${item.link}" target="_blank">${item.link}</a><br>
+      <small>${item.data}</small>
+      <div class="actions">
         <button onclick="excluir(${i})">🗑️ Excluir</button>
       </div>
     `;
+    document.getElementById(item.tipo).appendChild(div);
   });
 }
 
-function exportar(){
-  let csv="Tipo,Data,Titulo,Link\n";
-  dados.forEach(m=>{
-    csv+=`${m.tipo},${m.data},"${m.titulo}",${m.link}\n`;
+function exportar() {
+  let csv = "Tipo,Título,Link,Data\n";
+  dados.forEach(d => {
+    csv += `${d.tipo},"${d.titulo}",${d.link},${d.data}\n`;
   });
-  const blob=new Blob([csv],{type:"text/csv"});
-  const a=document.createElement("a");
-  a.href=URL.createObjectURL(blob);
-  a.download="clipping.csv";
+
+  const blob = new Blob([csv], { type: "text/csv" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "clipping.csv";
   a.click();
 }
 </script>
