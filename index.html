@@ -139,7 +139,7 @@ button:hover {
       </select>
 
       <button onclick="salvar()">Salvar</button>
-      <button onclick="exportar()">📤 Exportar CSV</button>
+      <button onclick="exportar()">📤 Exportar Excel</button>
     </div>
 
     <!-- COLUNAS -->
@@ -229,13 +229,32 @@ function render() {
   });
 }
 
+/* ===== EXPORTAÇÃO CORRETA PARA EXCEL (pt-BR) ===== */
+
+function csvEscape(value) {
+  const v = (value ?? "").toString().replace(/\r?\n/g, " ");
+  return `"${v.replace(/"/g, '""')}"`;
+}
+
 function exportar() {
-  let csv = "Tipo,Título,Link,Observações,Data\n";
+  const sep = ";";
+  let csv = ["Tipo", "Título", "Link", "Observações", "Data"].join(sep);
+
   dados.forEach(d => {
-    csv += `${d.tipo},"${d.titulo}",${d.link},"${d.obs || ""}",${d.data}\n`;
+    csv += "\n" + [
+      csvEscape(d.tipo),
+      csvEscape(d.titulo),
+      csvEscape(d.link),
+      csvEscape(d.obs || ""),
+      csvEscape(d.data)
+    ].join(sep);
   });
 
-  const blob = new Blob([csv], { type: "text/csv" });
+  const blob = new Blob(
+    ["\uFEFF" + csv],
+    { type: "text/csv;charset=utf-8;" }
+  );
+
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
   a.download = "clipping.csv";
