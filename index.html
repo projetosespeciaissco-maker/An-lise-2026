@@ -77,7 +77,9 @@ button {
 }
 
 .item small {
-  color: #666;
+  color: #555;
+  display: block;
+  margin-top: 3px;
 }
 
 .actions button {
@@ -100,11 +102,15 @@ button {
 <div id="app" class="hidden">
   <div class="container">
 
+    <!-- FORMULÁRIO -->
     <div class="form">
       <h3>➕ Nova Matéria</h3>
 
       <input id="titulo" placeholder="Título da matéria">
+
       <textarea id="link" rows="3" placeholder="Cole o link aqui"></textarea>
+
+      <textarea id="obs" rows="2" placeholder="📝 Observações (opcional)"></textarea>
 
       <select id="tipo">
         <option value="positivo">🟢 Positivo</option>
@@ -116,7 +122,9 @@ button {
       <button onclick="exportar()">📤 Exportar CSV</button>
     </div>
 
+    <!-- COLUNAS -->
     <div class="columns">
+
       <div class="column">
         <h3>🟢 Positivo</h3>
         <div id="positivo"></div>
@@ -131,6 +139,7 @@ button {
         <h3>🔴 Negativo</h3>
         <div id="negativo"></div>
       </div>
+
     </div>
 
   </div>
@@ -142,10 +151,8 @@ let dados = JSON.parse(localStorage.getItem("clipping") || "[]");
 
 function login() {
   if (senha.value === SENHA_CORRETA) {
-    loginDiv = document.getElementById("login");
-    appDiv = document.getElementById("app");
-    loginDiv.classList.add("hidden");
-    appDiv.classList.remove("hidden");
+    document.getElementById("login").classList.add("hidden");
+    document.getElementById("app").classList.remove("hidden");
     render();
   } else {
     alert("Senha incorreta");
@@ -161,13 +168,17 @@ function salvar() {
   dados.push({
     titulo: titulo.value,
     link: link.value,
+    obs: obs.value,
     tipo: tipo.value,
     data: new Date().toLocaleDateString()
   });
 
   localStorage.setItem("clipping", JSON.stringify(dados));
+
   titulo.value = "";
   link.value = "";
+  obs.value = "";
+
   render();
 }
 
@@ -186,9 +197,10 @@ function render() {
     const div = document.createElement("div");
     div.className = "item";
     div.innerHTML = `
-      <strong>${item.titulo}</strong><br>
-      <a href="${item.link}" target="_blank">${item.link}</a><br>
-      <small>${item.data}</small>
+      <strong>${item.titulo}</strong>
+      <a href="${item.link}" target="_blank">${item.link}</a>
+      ${item.obs ? `<small>📝 ${item.obs}</small>` : ""}
+      <small>📅 ${item.data}</small>
       <div class="actions">
         <button onclick="excluir(${i})">🗑️ Excluir</button>
       </div>
@@ -198,9 +210,9 @@ function render() {
 }
 
 function exportar() {
-  let csv = "Tipo,Título,Link,Data\n";
+  let csv = "Tipo,Título,Link,Observações,Data\n";
   dados.forEach(d => {
-    csv += `${d.tipo},"${d.titulo}",${d.link},${d.data}\n`;
+    csv += `${d.tipo},"${d.titulo}",${d.link},"${d.obs || ""}",${d.data}\n`;
   });
 
   const blob = new Blob([csv], { type: "text/csv" });
