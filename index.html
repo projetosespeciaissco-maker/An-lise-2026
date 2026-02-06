@@ -40,13 +40,15 @@ button:hover{ background:#eee; }
 .item a{ font-size:12px; color:#2563eb; word-break:break-all; }
 .item small{ display:block; color:#555; margin-top:3px; }
 
-.actions{ margin-top:6px; }
+.actions{ margin-top:8px; display:flex; gap:8px; }
 .actions button{
-  width:auto; padding:4px 8px; font-size:12px;
+  width:auto; padding:5px 8px; font-size:12px;
   border-radius:6px;
 }
 .btnDel{ border-color:#fca5a5; }
 .btnDel:hover{ background:#fee2e2; }
+.btnEdit{ border-color:#93c5fd; }
+.btnEdit:hover{ background:#dbeafe; }
 
 .notice{
   background:#e7f7ee;
@@ -61,6 +63,16 @@ button:hover{ background:#eee; }
   background:#fff3cd;
   border:1px solid #ffeeba;
   color:#6b4e00;
+}
+.badgeEdit{
+  display:inline-block;
+  margin-top:8px;
+  font-size:12px;
+  color:#374151;
+  background:#f3f4f6;
+  border:1px solid #e5e7eb;
+  padding:6px 8px;
+  border-radius:999px;
 }
 </style>
 </head>
@@ -81,9 +93,13 @@ button:hover{ background:#eee; }
 
     <!-- FORMULÁRIO -->
     <div class="form">
-      <h3>➕ Nova Matéria</h3>
+      <h3>➕ Matéria</h3>
 
       <input id="autor" placeholder="Seu nome (quem analisou)">
+
+      <!-- NOVO -->
+      <input id="tituloAnalise" placeholder="Título da análise">
+
       <input id="titulo" placeholder="Título da matéria">
       <input id="veiculo" placeholder="Veículo (ex: G1, Estadão)">
       <input id="autoriaMateria" placeholder="Autoria da matéria">
@@ -103,7 +119,8 @@ button:hover{ background:#eee; }
         <option value="negativo">🔴 Negativo</option>
       </select>
 
-      <button onclick="salvar()">Salvar</button>
+      <button id="btnSalvar" onclick="salvarOuAtualizar()">Salvar</button>
+      <button id="btnCancelar" class="hidden" onclick="cancelarEdicao()">Cancelar edição</button>
 
       <div class="rowBtns">
         <button onclick="exportar()">📤 Exportar Excel</button>
@@ -111,6 +128,7 @@ button:hover{ background:#eee; }
       </div>
 
       <div id="status" class="notice hidden"></div>
+      <div id="editBadge" class="badgeEdit hidden">✏️ Editando item</div>
     </div>
 
     <!-- COLUNAS -->
@@ -138,6 +156,7 @@ const API_TOKEN = "clipping2026seguro";
 const SENHA_SITE = "clipping2026";
 
 let dados = [];
+let editingId = null;
 
 function formatarData(v){
   if(!v) return "-";
@@ -166,46 +185,97 @@ function entrar(){
   atualizar();
 }
 
-async function salvar(){
-  const payload = {
-    token: API_TOKEN,
-    action: "add",
-    autor: autor.value,
-    titulo: titulo.value,
-    link: link.value,
-    obs: obs.value,
-    tipo: tipo.value,
-    dataMateria: dataMateria.value,
-    dataAnalise: dataAnalise.value,
-    veiculo: veiculo.value,
-    autoriaMateria: autoriaMateria.value
-  };
-
-  if(!payload.titulo || !payload.link){
-    showStatus("Preencha título e link", true);
-    return;
-  }
-
+async function apiPost(payload){
   const resp = await fetch(API_URL,{
     method:"POST",
     headers:{ "Content-Type":"text/plain;charset=utf-8" },
     body: JSON.stringify(payload)
   });
-  const out = await resp.json();
+  return resp.json();
+}
 
-  if(out.ok){
-    showStatus("Salvo na nuvem ✅");
-    limpar();
-    atualizar();
-  } else {
-    showStatus("Erro ao salvar", true);
+function pegarPayload(){
+  return {
+    token: API_TOKEN,
+    autor: (autor.value || "").trim(),
+    tituloAnalise: (tituloAnalise.value || "").trim(),   // NOVO
+    titulo: (titulo.value || "").trim(),
+    link: (link.value || "").trim(),
+    obs: (obs.value || "").trim(),
+    tipo: tipo.value,
+    dataMateria: dataMateria.value || "",
+    dataAnalise: dataAnalise.value || "",
+    veiculo: (veiculo.value || "").trim(),
+    autoriaMateria: (autoriaMateria.value || "").trim()
+  };
+}
+
+async function salvarOuAtualizar(){
+  const base = pegarPayload();
+
+  if(!base.titulo || !base.link){
+    showStatus("Preencha título da matéria e link", true);
+    return;
+  }
+
+  try{
+    let out;
+    if(!editingId){
+      out = await apiPost({ ...base, action:"add" });
+    } else {
+      out = await apiPost({ ...base, action:"update", id: editingId });
+    }
+
+    if(out.ok){
+      showStatus(editingId ? "Atualizado ✅" : "Salvo na nuvem ✅");
+      cancelarEdicao();
+      limparCampos();
+      await atualizar();
+    } else {
+      showStatus("Erro: " + (out.error || "desconhecido"), true);
+    }
+  } catch(e){
+    showStatus("Falha de rede.", true);
   }
 }
 
-function limpar(){
+function limparCampos(){
+  tituloAnalise.value = "";
   titulo.value = "";
   link.value = "";
   obs.value = "";
+  veiculo.value = "";
+  autoriaMateria.value = "";
+}
+
+function cancelarEdicao(){
+  editingId = null;
+  document.getElementById("btnSalvar").innerText = "Salvar";
+  document.getElementById("btnCancelar").classList.add("hidden");
+  document.getElementById("editBadge").classList.add("hidden");
+}
+
+function editar(id){
+  const item = dados.find(x => String(x.id) === String(id));
+  if(!item) return;
+
+  editingId = String(item.id);
+  document.getElementById("btnSalvar").innerText = "Atualizar";
+  document.getElementById("btnCancelar").classList.remove("hidden");
+  document.getElementById("editBadge").classList.remove("hidden");
+
+  autor.value = item.autor || "";
+  tituloAnalise.value = item.tituloAnalise || "";
+  titulo.value = item.titulo || "";
+  link.value = item.link || "";
+  obs.value = item.obs || "";
+  tipo.value = item.tipo || "neutro";
+  dataMateria.value = (item.dataMateria || "").slice(0,10);
+  dataAnalise.value = (item.dataAnalise || "").slice(0,10);
+  veiculo.value = item.veiculo || "";
+  autoriaMateria.value = item.autoriaMateria || "";
+
+  window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
 async function atualizar(){
@@ -220,7 +290,14 @@ async function atualizar(){
 function render(){
   positivo.innerHTML = neutro.innerHTML = negativo.innerHTML = "";
 
-  dados.forEach(item=>{
+  // Ordena por dataAnalise > dataMateria > dataHora (desc)
+  const sorted = [...dados].sort((a,b)=>{
+    const keyA = (a.dataAnalise || a.dataMateria || a.dataHora || "");
+    const keyB = (b.dataAnalise || b.dataMateria || b.dataHora || "");
+    return (""+keyB).localeCompare(""+keyA);
+  });
+
+  sorted.forEach(item=>{
     const div = document.createElement("div");
     div.className = "item";
 
@@ -230,45 +307,78 @@ function render(){
     ].filter(Boolean).join(" • ");
 
     div.innerHTML = `
-      <strong>${item.titulo}</strong>
-      <a href="${item.link}" target="_blank">${item.link}</a>
-      ${meta ? `<small>${meta}</small>` : ""}
-      ${item.obs ? `<small>📝 ${item.obs}</small>` : ""}
-      <small>📅 Matéria: ${formatarData(item.dataMateria)} • 🕵️ Análise: ${formatarData(item.dataAnalise)}</small>
+      ${item.tituloAnalise ? `<strong>📝 ${escapeHtml(item.tituloAnalise)}</strong>` : ""}
+      <strong>${escapeHtml(item.titulo || "")}</strong>
+      <a href="${escapeAttr(item.link || "")}" target="_blank">${escapeHtml(item.link || "")}</a>
+      ${meta ? `<small>${escapeHtml(meta)}</small>` : ""}
+      ${item.obs ? `<small>📝 ${escapeHtml(item.obs)}</small>` : ""}
+      <small>📅 Matéria: ${escapeHtml(formatarData(item.dataMateria))} • 🕵️ Análise: ${escapeHtml(formatarData(item.dataAnalise))}</small>
       <div class="actions">
-        <button class="btnDel" onclick="excluir('${item.id}')">🗑️ Excluir</button>
+        <button class="btnEdit" onclick="editar('${escapeAttr(item.id)}')">✏️ Editar</button>
+        <button class="btnDel" onclick="excluir('${escapeAttr(item.id)}')">🗑️ Excluir</button>
       </div>
     `;
 
     if(item.tipo==="positivo") positivo.appendChild(div);
-    if(item.tipo==="neutro") neutro.appendChild(div);
-    if(item.tipo==="negativo") negativo.appendChild(div);
+    else if(item.tipo==="neutro") neutro.appendChild(div);
+    else if(item.tipo==="negativo") negativo.appendChild(div);
   });
 }
 
 async function excluir(id){
   if(!confirm("Excluir esta matéria?")) return;
-  await fetch(API_URL,{
-    method:"POST",
-    headers:{ "Content-Type":"text/plain;charset=utf-8" },
-    body: JSON.stringify({ token:API_TOKEN, action:"delete", id })
-  });
-  atualizar();
+  const out = await apiPost({ token:API_TOKEN, action:"delete", id });
+  if(out.ok){
+    showStatus("Excluído ✅");
+    if(editingId === String(id)) cancelarEdicao();
+    atualizar();
+  } else {
+    showStatus("Erro ao excluir: " + (out.error || "desconhecido"), true);
+  }
 }
 
 function exportar(){
-  let csv = "Tipo;Título;Veículo;Autoria;Link;Observações;Data Matéria;Data Análise;Autor\n";
-  dados.forEach(d=>{
-    csv += [
-      d.tipo,d.titulo,d.veiculo,d.autoriaMateria,d.link,d.obs,
-      formatarData(d.dataMateria),formatarData(d.dataAnalise),d.autor
-    ].map(v=>`"${(v||"").replace(/"/g,'""')}"`).join(";") + "\n";
+  let csv = "Tipo;Título da análise;Título da matéria;Veículo;Autoria;Link;Observações;Data Matéria;Data Análise;Autor;ID\n";
+  const sorted = [...dados].sort((a,b)=>{
+    const keyA = (a.dataAnalise || a.dataMateria || a.dataHora || "");
+    const keyB = (b.dataAnalise || b.dataMateria || b.dataHora || "");
+    return (""+keyB).localeCompare(""+keyA);
   });
+
+  sorted.forEach(d=>{
+    csv += [
+      d.tipo,
+      d.tituloAnalise,
+      d.titulo,
+      d.veiculo,
+      d.autoriaMateria,
+      d.link,
+      d.obs,
+      formatarData(d.dataMateria),
+      formatarData(d.dataAnalise),
+      d.autor,
+      d.id
+    ].map(v=>`"${String(v||"").replace(/"/g,'""')}"`).join(";") + "\n";
+  });
+
   const blob = new Blob(["\uFEFF"+csv],{type:"text/csv;charset=utf-8;"});
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
   a.download = "clipping.csv";
   a.click();
+}
+
+/* Helpers */
+function escapeHtml(str) {
+  return (str ?? "").toString()
+    .replaceAll("&","&amp;")
+    .replaceAll("<","&lt;")
+    .replaceAll(">","&gt;")
+    .replaceAll('"',"&quot;")
+    .replaceAll("'","&#039;");
+}
+function escapeAttr(str) {
+  return (str ?? "").toString().replaceAll('"', '%22').replaceAll("'", "%27");
 }
 </script>
 </body>
