@@ -8,7 +8,7 @@
 body { font-family: Arial, sans-serif; margin:0; background:#f4f6f8; }
 header { background:#1f2937; color:#fff; padding:15px; text-align:center; font-size:18px; }
 .hidden{display:none;}
-#login, #app { padding:20px; }
+#loginBox, #app { padding:20px; }
 
 input, textarea, select {
   width:100%; box-sizing:border-box; padding:10px; margin-top:8px;
@@ -68,12 +68,14 @@ button:hover{ background:#eee; }
 <body>
 <header>📊 Clipping Jornalístico</header>
 
-<div id="login">
+<!-- LOGIN -->
+<div id="loginBox">
   <h3>🔒 Acesso</h3>
   <input type="password" id="senha" placeholder="Senha">
-  <button onclick="login()">Entrar</button>
+  <button onclick="entrar()">Entrar</button>
 </div>
 
+<!-- APP -->
 <div id="app" class="hidden">
   <div class="container">
 
@@ -83,7 +85,6 @@ button:hover{ background:#eee; }
 
       <input id="autor" placeholder="Seu nome (quem analisou)">
       <input id="titulo" placeholder="Título da matéria">
-
       <input id="veiculo" placeholder="Veículo (ex: G1, Estadão)">
       <input id="autoriaMateria" placeholder="Autoria da matéria">
 
@@ -147,21 +148,21 @@ function formatarData(v){
          d.getFullYear();
 }
 
-function showStatus(msg, type="ok"){
+function showStatus(msg, warn=false){
   const el = document.getElementById("status");
-  el.classList.remove("hidden");
-  el.classList.toggle("warn", type !== "ok");
   el.innerText = msg;
+  el.classList.remove("hidden");
+  el.classList.toggle("warn", warn);
   setTimeout(()=> el.classList.add("hidden"), 2500);
 }
 
-function login(){
-  if(senha.value !== SENHA_SITE){
+function entrar(){
+  if(document.getElementById("senha").value !== SENHA_SITE){
     alert("Senha incorreta");
     return;
   }
-  login.classList.add("hidden");
-  app.classList.remove("hidden");
+  document.getElementById("loginBox").classList.add("hidden");
+  document.getElementById("app").classList.remove("hidden");
   atualizar();
 }
 
@@ -181,7 +182,7 @@ async function salvar(){
   };
 
   if(!payload.titulo || !payload.link){
-    showStatus("Preencha título e link", "warn");
+    showStatus("Preencha título e link", true);
     return;
   }
 
@@ -197,7 +198,7 @@ async function salvar(){
     limpar();
     atualizar();
   } else {
-    showStatus("Erro ao salvar", "warn");
+    showStatus("Erro ao salvar", true);
   }
 }
 
