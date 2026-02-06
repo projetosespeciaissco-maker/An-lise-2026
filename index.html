@@ -2,7 +2,7 @@
 <html lang="pt-br">
 <head>
 <meta charset="UTF-8">
-<title>Clipping Jornalístico (Equipe)</title>
+<title>Clipping Jornalístico</title>
 
 <style>
 body { font-family: Arial, sans-serif; margin:0; background:#f4f6f8; }
@@ -11,61 +11,74 @@ header { background:#1f2937; color:#fff; padding:15px; text-align:center; font-s
 #login, #app { padding:20px; }
 
 input, textarea, select {
-  width:100%; box-sizing:border-box; padding:12px; margin-top:10px; font-size:14px;
-  border:1px solid #ccc; border-radius:6px; resize:vertical;
+  width:100%; box-sizing:border-box; padding:10px; margin-top:8px;
+  border:1px solid #ccc; border-radius:6px; font-size:14px;
 }
+label{ font-size:12px; color:#444; margin-top:10px; display:block; }
+
 button{
-  width:100%; box-sizing:border-box; padding:12px; margin-top:10px; font-size:14px;
-  cursor:pointer; border-radius:6px; border:1px solid #ccc; background:#fff;
+  width:100%; padding:10px; margin-top:10px;
+  border-radius:6px; border:1px solid #ccc; cursor:pointer;
 }
-button:hover{ background:#f0f0f0; }
+button:hover{ background:#eee; }
 
 .container{ display:flex; gap:20px; align-items:flex-start; }
 .form{ width:32%; background:#fff; padding:15px; border-radius:8px; }
 .columns{ width:68%; display:flex; gap:10px; }
-.column{ flex:1; background:#fff; padding:10px; border-radius:8px; min-height:300px; }
-.column h3{ text-align:center; margin:10px 0; }
+.column{ flex:1; background:#fff; padding:10px; border-radius:8px; }
+.column h3{ text-align:center; }
 
-.toolbar{ display:flex; gap:8px; margin-top:10px; }
-.toolbar button{ width:auto; flex:1; }
-
-.small { font-size:12px; color:#666; margin-top:8px; }
-.badge { display:inline-block; padding:2px 8px; border-radius:999px; font-size:12px; background:#eef2ff; }
-
-.item { border-bottom:1px solid #ddd; padding:8px 0; }
-.item strong{ display:block; margin-bottom:3px; }
+.item{
+  border-bottom:1px solid #ddd;
+  padding:8px 0;
+}
+.item strong{ display:block; }
 .item a{ font-size:12px; color:#2563eb; word-break:break-all; }
 .item small{ display:block; color:#555; margin-top:3px; }
 
-.actions{ display:flex; gap:6px; margin-top:6px; }
-.actions button{ width:auto; padding:6px 10px; }
+.actions{ display:flex; gap:5px; margin-top:6px; }
+.actions button{ width:auto; padding:4px 8px; font-size:12px; }
 
-.notice{ background:#fff3cd; border:1px solid #ffeeba; padding:10px; border-radius:8px; margin-top:10px; color:#6b4e00; }
-.ok{ background:#e7f7ee; border:1px solid #b7ebcd; color:#0f5132; }
+.notice{
+  background:#e7f7ee;
+  border:1px solid #b7ebcd;
+  color:#0f5132;
+  padding:8px;
+  border-radius:6px;
+  margin-top:10px;
+  font-size:13px;
+}
 </style>
 </head>
 
 <body>
-<header>📊 Clipping Jornalístico (Equipe)</header>
+<header>📊 Clipping Jornalístico</header>
 
 <div id="login">
   <h3>🔒 Acesso</h3>
-  <input type="password" id="senha" placeholder="Digite a senha do site">
+  <input type="password" id="senha" placeholder="Senha">
   <button onclick="login()">Entrar</button>
-  <div class="small">Senha simples (para evitar acesso casual). Dados ficam na planilha.</div>
 </div>
 
 <div id="app" class="hidden">
   <div class="container">
 
+    <!-- FORMULÁRIO -->
     <div class="form">
       <h3>➕ Nova Matéria</h3>
 
-      <input id="autor" placeholder="Seu nome (ex: Raquel)">
+      <input id="autor" placeholder="Seu nome">
 
       <input id="titulo" placeholder="Título da matéria">
-      <textarea id="link" rows="3" placeholder="Cole o link aqui"></textarea>
-      <textarea id="obs" rows="2" placeholder="📝 Observações (opcional)"></textarea>
+
+      <label>📅 Data da matéria</label>
+      <input type="date" id="dataMateria">
+
+      <label>🕵️ Data da análise</label>
+      <input type="date" id="dataAnalise">
+
+      <textarea id="link" rows="2" placeholder="Link da matéria"></textarea>
+      <textarea id="obs" rows="2" placeholder="Observações"></textarea>
 
       <select id="tipo">
         <option value="positivo">🟢 Positivo</option>
@@ -73,37 +86,22 @@ button:hover{ background:#f0f0f0; }
         <option value="negativo">🔴 Negativo</option>
       </select>
 
-      <div class="toolbar">
-        <button onclick="salvarOuAtualizar()" id="btnSalvar">Salvar</button>
-        <button onclick="limparFormulario()" id="btnLimpar">Limpar</button>
-      </div>
-
-      <div class="toolbar">
-        <button onclick="exportar()">📤 Exportar Excel</button>
-        <button onclick="atualizar()">🔄 Atualizar</button>
-      </div>
-
+      <button onclick="salvar()">Salvar</button>
       <div id="status" class="notice hidden"></div>
-
-      <div class="small">
-        <span class="badge">Atualiza a cada 15s</span>
-        <br>Equipe alimenta junto via planilha.
-      </div>
     </div>
 
+    <!-- COLUNAS -->
     <div class="columns">
       <div class="column">
-        <h3>🟢 Positivo (<span id="cPos">0</span>)</h3>
+        <h3>🟢 Positivo</h3>
         <div id="positivo"></div>
       </div>
-
       <div class="column">
-        <h3>⚪ Neutro (<span id="cNeu">0</span>)</h3>
+        <h3>⚪ Neutro</h3>
         <div id="neutro"></div>
       </div>
-
       <div class="column">
-        <h3>🔴 Negativo (<span id="cNeg">0</span>)</h3>
+        <h3>🔴 Negativo</h3>
         <div id="negativo"></div>
       </div>
     </div>
@@ -112,241 +110,86 @@ button:hover{ background:#f0f0f0; }
 </div>
 
 <script>
-/* ======= CONFIGURE AQUI ======= */
 const API_URL = "https://script.google.com/macros/s/AKfycbwmQvUrspy3k497Bo0zSxvOiKasaDY8UxvRs64R2klDJNVDnofdVzXf2oH--v0zfRe1/exec";
 const API_TOKEN = "clipping2026seguro";
-const SENHA_SITE = "clipping2026"; // pode mudar se quiser
-/* ============================== */
+const SENHA_SITE = "clipping2026";
 
 let dados = [];
-let editingId = null;
 
-function showStatus(msg, ok=false) {
-  const el = document.getElementById("status");
-  el.classList.remove("hidden");
-  el.classList.toggle("ok", !!ok);
-  el.innerText = msg;
-  setTimeout(()=> el.classList.add("hidden"), 3000);
-}
-
-function login() {
-  if (document.getElementById("senha").value !== SENHA_SITE) {
+function login(){
+  if(senha.value !== SENHA_SITE){
     alert("Senha incorreta");
     return;
   }
-  document.getElementById("login").classList.add("hidden");
-  document.getElementById("app").classList.remove("hidden");
-
+  loginDiv = document.getElementById("login");
+  appDiv = document.getElementById("app");
+  loginDiv.classList.add("hidden");
+  appDiv.classList.remove("hidden");
   atualizar();
-  setInterval(atualizar, 15000);
 }
 
-async function apiPost(payload) {
+async function salvar(){
+  const payload = {
+    token: API_TOKEN,
+    action: "add",
+    autor: autor.value,
+    titulo: titulo.value,
+    link: link.value,
+    obs: obs.value,
+    tipo: tipo.value,
+    dataMateria: dataMateria.value,
+    dataAnalise: dataAnalise.value
+  };
+
   const resp = await fetch(API_URL, {
     method: "POST",
-    headers: { "Content-Type": "text/plain;charset=utf-8" },
     body: JSON.stringify(payload)
   });
-  return resp.json();
-}
+  const out = await resp.json();
 
-async function atualizar() {
-  try {
-    const resp = await fetch(API_URL);
-    const out = await resp.json();
-    if (!out.ok) {
-      showStatus("Erro ao carregar: " + (out.error || "desconhecido"));
-      return;
-    }
-
-    dados = (out.rows || []).map(r => ({
-      id: String(r.id || ""),
-      dataHora: r.dataHora,
-      tipo: (r.tipo || "").toString(),
-      titulo: (r.titulo || "").toString(),
-      link: (r.link || "").toString(),
-      obs: (r.obs || "").toString(),
-      autor: (r.autor || "").toString()
-    }));
-
-    dados.sort((a,b)=> (""+b.dataHora).localeCompare(""+a.dataHora));
-    render();
-  } catch (e) {
-    showStatus("Falha de rede ao carregar.");
+  if(out.ok){
+    status.innerText = "Salvo na nuvem ✅";
+    status.classList.remove("hidden");
+    limpar();
+    atualizar();
+  } else {
+    alert("Erro ao salvar");
   }
 }
 
-function limparFormulario() {
-  editingId = null;
-  document.getElementById("btnSalvar").innerText = "Salvar";
+function limpar(){
   titulo.value = "";
   link.value = "";
   obs.value = "";
 }
 
-function preencherParaEditar(item) {
-  editingId = item.id;
-  document.getElementById("btnSalvar").innerText = "Atualizar";
-  titulo.value = item.titulo;
-  link.value = item.link;
-  obs.value = item.obs;
-  tipo.value = item.tipo;
-}
-
-async function salvarOuAtualizar() {
-  const autorVal = autor.value.trim() || "Equipe";
-  const tituloVal = titulo.value.trim();
-  const linkVal = link.value.trim();
-  const obsVal = obs.value.trim();
-  const tipoVal = tipo.value;
-
-  if (!tituloVal || !linkVal) {
-    alert("Preencha título e link");
-    return;
-  }
-
-  try {
-    if (!editingId) {
-      const out = await apiPost({
-        token: API_TOKEN,
-        action: "add",
-        autor: autorVal,
-        tipo: tipoVal,
-        titulo: tituloVal,
-        link: linkVal,
-        obs: obsVal
-      });
-
-      if (!out.ok) {
-        showStatus("Erro ao salvar: " + (out.error || "desconhecido"));
-        return;
-      }
-      showStatus("Salvo na nuvem ✅", true);
-      limparFormulario();
-      await atualizar();
-    } else {
-      const out = await apiPost({
-        token: API_TOKEN,
-        action: "update",
-        id: editingId,
-        autor: autorVal,
-        tipo: tipoVal,
-        titulo: tituloVal,
-        link: linkVal,
-        obs: obsVal
-      });
-
-      if (!out.ok) {
-        showStatus("Erro ao atualizar: " + (out.error || "desconhecido"));
-        return;
-      }
-      showStatus("Atualizado ✅", true);
-      limparFormulario();
-      await atualizar();
-    }
-  } catch (e) {
-    showStatus("Falha de rede ao salvar/atualizar.");
+async function atualizar(){
+  const resp = await fetch(API_URL);
+  const out = await resp.json();
+  if(out.ok){
+    dados = out.rows;
+    render();
   }
 }
 
-async function excluirItem(id) {
-  if (!confirm("Excluir esta matéria?")) return;
-  try {
-    const out = await apiPost({ token: API_TOKEN, action: "delete", id });
-    if (!out.ok) {
-      showStatus("Erro ao excluir: " + (out.error || "desconhecido"));
-      return;
-    }
-    showStatus("Excluído ✅", true);
-    await atualizar();
-  } catch (e) {
-    showStatus("Falha de rede ao excluir.");
-  }
-}
-
-function render() {
+function render(){
   positivo.innerHTML = "";
   neutro.innerHTML = "";
   negativo.innerHTML = "";
 
-  const pos = dados.filter(d => d.tipo === "positivo");
-  const neu = dados.filter(d => d.tipo === "neutro");
-  const neg = dados.filter(d => d.tipo === "negativo");
-
-  cPos.innerText = pos.length;
-  cNeu.innerText = neu.length;
-  cNeg.innerText = neg.length;
-
-  for (const item of dados) {
+  dados.forEach(item=>{
     const div = document.createElement("div");
     div.className = "item";
-
-    const dataTxt = item.dataHora ? new Date(item.dataHora).toLocaleString() : "";
-    const autorTxt = item.autor ? `👤 ${item.autor}` : "";
-
     div.innerHTML = `
-      <strong>${escapeHtml(item.titulo)}</strong>
-      <a href="${escapeAttr(item.link)}" target="_blank">${escapeHtml(item.link)}</a>
-      ${item.obs ? `<small>📝 ${escapeHtml(item.obs)}</small>` : ""}
-      <small>📅 ${escapeHtml(dataTxt)} ${autorTxt ? " • " + escapeHtml(autorTxt) : ""}</small>
-      <div class="actions">
-        <button onclick="onEditar('${escapeAttr(item.id)}')">✏️ Editar</button>
-        <button onclick="excluirItem('${escapeAttr(item.id)}')">🗑️ Excluir</button>
-      </div>
+      <strong>${item.titulo}</strong>
+      <a href="${item.link}" target="_blank">${item.link}</a>
+      ${item.obs ? `<small>📝 ${item.obs}</small>` : ""}
+      <small>📅 Matéria: ${item.dataMateria || "-"} • 🕵️ Análise: ${item.dataAnalise || "-"}</small>
     `;
-
-    if (item.tipo === "positivo") positivo.appendChild(div);
-    else if (item.tipo === "neutro") neutro.appendChild(div);
-    else negativo.appendChild(div);
-  }
-}
-
-function onEditar(id) {
-  const item = dados.find(d => d.id === id);
-  if (!item) return;
-  preencherParaEditar(item);
-  window.scrollTo({ top: 0, behavior: "smooth" });
-}
-
-/* ===== Export Excel (pt-BR) ===== */
-function csvEscape(value) {
-  const v = (value ?? "").toString().replace(/\r?\n/g, " ");
-  return `"${v.replace(/"/g, '""')}"`;
-}
-
-function exportar() {
-  const sep = ";";
-  let csv = ["Tipo","Título","Link","Observações","Data/Hora","Autor"].join(sep);
-
-  dados.forEach(d => {
-    csv += "\n" + [
-      csvEscape(d.tipo),
-      csvEscape(d.titulo),
-      csvEscape(d.link),
-      csvEscape(d.obs || ""),
-      csvEscape(d.dataHora ? new Date(d.dataHora).toLocaleString() : ""),
-      csvEscape(d.autor || "")
-    ].join(sep);
+    if(item.tipo==="positivo") positivo.appendChild(div);
+    if(item.tipo==="neutro") neutro.appendChild(div);
+    if(item.tipo==="negativo") negativo.appendChild(div);
   });
-
-  const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(blob);
-  a.download = "clipping.csv";
-  a.click();
-}
-
-/* ===== Helpers ===== */
-function escapeHtml(str) {
-  return (str ?? "").toString()
-    .replaceAll("&","&amp;")
-    .replaceAll("<","&lt;")
-    .replaceAll(">","&gt;")
-    .replaceAll('"',"&quot;")
-    .replaceAll("'","&#039;");
-}
-function escapeAttr(str) {
-  return (str ?? "").toString().replaceAll('"', '%22').replaceAll("'", "%27");
 }
 </script>
 
