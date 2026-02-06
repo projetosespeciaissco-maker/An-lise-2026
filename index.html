@@ -40,6 +40,14 @@ button:hover{ background:#eee; }
 .item a{ font-size:12px; color:#2563eb; word-break:break-all; }
 .item small{ display:block; color:#555; margin-top:3px; }
 
+.actions{ display:flex; gap:6px; margin-top:8px; }
+.actions button{
+  width:auto; padding:5px 8px; font-size:12px; margin-top:0;
+  border-radius:6px;
+}
+.btnDel{ border-color:#fca5a5; }
+.btnDel:hover{ background:#fee2e2; }
+
 .notice{
   background:#e7f7ee;
   border:1px solid #b7ebcd;
@@ -147,6 +155,15 @@ function login(){
   setInterval(atualizar, 15000);
 }
 
+async function apiPost(payload){
+  const resp = await fetch(API_URL, {
+    method: "POST",
+    headers: { "Content-Type": "text/plain;charset=utf-8" },
+    body: JSON.stringify(payload)
+  });
+  return resp.json();
+}
+
 async function salvar(){
   const payload = {
     token: API_TOKEN,
@@ -166,17 +183,11 @@ async function salvar(){
   }
 
   try{
-    const resp = await fetch(API_URL, {
-      method: "POST",
-      headers: { "Content-Type": "text/plain;charset=utf-8" },
-      body: JSON.stringify(payload)
-    });
-    const out = await resp.json();
-
+    const out = await apiPost(payload);
     if(out.ok){
       showStatus("Salvo na nuvem ✅", "ok");
       limpar();
-      await atualizar(); // puxa da nuvem e renderiza do lado
+      await atualizar();
     } else {
       showStatus("Erro ao salvar: " + (out.error || "desconhecido"), "warn");
     }
@@ -189,7 +200,6 @@ function limpar(){
   titulo.value = "";
   link.value = "";
   obs.value = "";
-  // mantém autor/tipo e datas pra facilitar o fluxo (você pode zerar se quiser)
 }
 
 async function atualizar(){
@@ -212,7 +222,7 @@ function render(){
   neutro.innerHTML = "";
   negativo.innerHTML = "";
 
-  // organiza por data da análise (se tiver), senão dataMateria, senão dataHora (registro)
+  // Ordena por dataAnalise > dataMateria > dataHora (desc)
   const sorted = [...dados].sort((a,b)=>{
     const keyA = (a.dataAnalise || a.dataMateria || a.dataHora || "");
     const keyB = (b.dataAnalise || b.dataMateria || b.dataHora || "");
@@ -225,17 +235,41 @@ function render(){
 
     const dm = item.dataMateria ? `📅 Matéria: ${item.dataMateria}` : "📅 Matéria: -";
     const da = item.dataAnalise ? `🕵️ Análise: ${item.dataAnalise}` : "🕵️ Análise: -";
+    const obsHtml = item.obs ? `<small>📝 ${escapeHtml(item.obs)}</small>` : "";
 
     div.innerHTML = `
       <strong>${escapeHtml(item.titulo || "")}</strong>
       <a href="${escapeAttr(item.link || "")}" target="_blank">${escapeHtml(item.link || "")}</a>
-      ${item.obs ? `<small>📝 ${escapeHtml(item.obs)}</small>` : ""}
+      ${obsHtml}
       <small>${escapeHtml(dm)} • ${escapeHtml(da)}</small>
+      <div class="actions">
+        <button class="btnDel" onclick="excluirItem('${escapeAttr(item.id)}')">🗑️ Excluir</button>
+      </div>
     `;
 
     if(item.tipo === "positivo") positivo.appendChild(div);
     else if(item.tipo === "neutro") neutro.appendChild(div);
     else if(item.tipo === "negativo") negativo.appendChild(div);
+  }
+}
+
+async function excluirItem(id){
+  if(!id){
+    showStatus("ID vazio (não dá pra excluir).", "warn");
+    return;
+  }
+  if(!confirm("Excluir esta matéria da nuvem?")) return;
+
+  try{
+    const out = await apiPost({ token: API_TOKEN, action: "delete", id });
+    if(out.ok){
+      showStatus("Excluído ✅", "ok");
+      await atualizar();
+    } else {
+      showStatus("Erro ao excluir: " + (out.error || "desconhecido"), "warn");
+    }
+  } catch(e){
+    showStatus("Falha de rede ao excluir.", "warn");
   }
 }
 
@@ -247,9 +281,8 @@ function csvEscape(value) {
 
 function exportar(){
   const sep = ";";
-  let csv = ["Tipo","Título","Link","Observações","Data da Matéria","Data da Análise","Autor"].join(sep);
+  let csv = ["Tipo","Título","Link","Observações","Data da Matéria","Data da Análise","Autor","ID"].join(sep);
 
-  // exporta já ordenado igual na tela
   const sorted = [...dados].sort((a,b)=>{
     const keyA = (a.dataAnalise || a.dataMateria || a.dataHora || "");
     const keyB = (b.dataAnalise || b.dataMateria || b.dataHora || "");
@@ -264,11 +297,11 @@ function exportar(){
       csvEscape(d.obs || ""),
       csvEscape(d.dataMateria || ""),
       csvEscape(d.dataAnalise || ""),
-      csvEscape(d.autor || "")
+      csvEscape(d.autor || ""),
+      csvEscape(d.id || "")
     ].join(sep);
   }
 
-  // BOM para acentos no Excel
   const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
