@@ -19,25 +19,26 @@ label{ font-size:12px; color:#444; margin-top:10px; display:block; }
 button{
   width:100%; padding:10px; margin-top:10px;
   border-radius:6px; border:1px solid #ccc; cursor:pointer;
+  background:#fff;
 }
 button:hover{ background:#eee; }
+
+.rowBtns{ display:flex; gap:8px; }
+.rowBtns button{ width:50%; }
 
 .container{ display:flex; gap:20px; align-items:flex-start; }
 .form{ width:32%; background:#fff; padding:15px; border-radius:8px; }
 .columns{ width:68%; display:flex; gap:10px; }
-.column{ flex:1; background:#fff; padding:10px; border-radius:8px; }
-.column h3{ text-align:center; }
+.column{ flex:1; background:#fff; padding:10px; border-radius:8px; min-height:300px; }
+.column h3{ text-align:center; margin:10px 0; }
 
 .item{
   border-bottom:1px solid #ddd;
   padding:8px 0;
 }
-.item strong{ display:block; }
+.item strong{ display:block; margin-bottom:4px; }
 .item a{ font-size:12px; color:#2563eb; word-break:break-all; }
 .item small{ display:block; color:#555; margin-top:3px; }
-
-.actions{ display:flex; gap:5px; margin-top:6px; }
-.actions button{ width:auto; padding:4px 8px; font-size:12px; }
 
 .notice{
   background:#e7f7ee;
@@ -47,6 +48,11 @@ button:hover{ background:#eee; }
   border-radius:6px;
   margin-top:10px;
   font-size:13px;
+}
+.notice.warn{
+  background:#fff3cd;
+  border:1px solid #ffeeba;
+  color:#6b4e00;
 }
 </style>
 </head>
@@ -87,6 +93,12 @@ button:hover{ background:#eee; }
       </select>
 
       <button onclick="salvar()">Salvar</button>
+
+      <div class="rowBtns">
+        <button onclick="exportar()">📤 Exportar Excel</button>
+        <button onclick="atualizar()">🔄 Atualizar</button>
+      </div>
+
       <div id="status" class="notice hidden"></div>
     </div>
 
@@ -116,44 +128,60 @@ const SENHA_SITE = "clipping2026";
 
 let dados = [];
 
+function showStatus(msg, type="ok"){
+  const el = document.getElementById("status");
+  el.classList.remove("hidden");
+  el.classList.toggle("warn", type !== "ok");
+  el.innerText = msg;
+  setTimeout(()=> el.classList.add("hidden"), 2500);
+}
+
 function login(){
-  if(senha.value !== SENHA_SITE){
+  if(document.getElementById("senha").value !== SENHA_SITE){
     alert("Senha incorreta");
     return;
   }
-  loginDiv = document.getElementById("login");
-  appDiv = document.getElementById("app");
-  loginDiv.classList.add("hidden");
-  appDiv.classList.remove("hidden");
+  document.getElementById("login").classList.add("hidden");
+  document.getElementById("app").classList.remove("hidden");
   atualizar();
+  setInterval(atualizar, 15000);
 }
 
 async function salvar(){
   const payload = {
     token: API_TOKEN,
     action: "add",
-    autor: autor.value,
-    titulo: titulo.value,
-    link: link.value,
-    obs: obs.value,
+    autor: (autor.value || "").trim(),
+    titulo: (titulo.value || "").trim(),
+    link: (link.value || "").trim(),
+    obs: (obs.value || "").trim(),
     tipo: tipo.value,
-    dataMateria: dataMateria.value,
-    dataAnalise: dataAnalise.value
+    dataMateria: dataMateria.value || "",
+    dataAnalise: dataAnalise.value || ""
   };
 
-  const resp = await fetch(API_URL, {
-    method: "POST",
-    body: JSON.stringify(payload)
-  });
-  const out = await resp.json();
+  if(!payload.titulo || !payload.link){
+    showStatus("Preencha título e link.", "warn");
+    return;
+  }
 
-  if(out.ok){
-    status.innerText = "Salvo na nuvem ✅";
-    status.classList.remove("hidden");
-    limpar();
-    atualizar();
-  } else {
-    alert("Erro ao salvar");
+  try{
+    const resp = await fetch(API_URL, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify(payload)
+    });
+    const out = await resp.json();
+
+    if(out.ok){
+      showStatus("Salvo na nuvem ✅", "ok");
+      limpar();
+      await atualizar(); // puxa da nuvem e renderiza do lado
+    } else {
+      showStatus("Erro ao salvar: " + (out.error || "desconhecido"), "warn");
+    }
+  } catch(e){
+    showStatus("Falha de rede ao salvar.", "warn");
   }
 }
 
@@ -161,14 +189,21 @@ function limpar(){
   titulo.value = "";
   link.value = "";
   obs.value = "";
+  // mantém autor/tipo e datas pra facilitar o fluxo (você pode zerar se quiser)
 }
 
 async function atualizar(){
-  const resp = await fetch(API_URL);
-  const out = await resp.json();
-  if(out.ok){
-    dados = out.rows;
-    render();
+  try{
+    const resp = await fetch(API_URL);
+    const out = await resp.json();
+    if(out.ok){
+      dados = Array.isArray(out.rows) ? out.rows : [];
+      render();
+    } else {
+      showStatus("Erro ao carregar: " + (out.error || "desconhecido"), "warn");
+    }
+  } catch(e){
+    showStatus("Falha de rede ao carregar.", "warn");
   }
 }
 
@@ -177,19 +212,81 @@ function render(){
   neutro.innerHTML = "";
   negativo.innerHTML = "";
 
-  dados.forEach(item=>{
+  // organiza por data da análise (se tiver), senão dataMateria, senão dataHora (registro)
+  const sorted = [...dados].sort((a,b)=>{
+    const keyA = (a.dataAnalise || a.dataMateria || a.dataHora || "");
+    const keyB = (b.dataAnalise || b.dataMateria || b.dataHora || "");
+    return (""+keyB).localeCompare(""+keyA);
+  });
+
+  for(const item of sorted){
     const div = document.createElement("div");
     div.className = "item";
+
+    const dm = item.dataMateria ? `📅 Matéria: ${item.dataMateria}` : "📅 Matéria: -";
+    const da = item.dataAnalise ? `🕵️ Análise: ${item.dataAnalise}` : "🕵️ Análise: -";
+
     div.innerHTML = `
-      <strong>${item.titulo}</strong>
-      <a href="${item.link}" target="_blank">${item.link}</a>
-      ${item.obs ? `<small>📝 ${item.obs}</small>` : ""}
-      <small>📅 Matéria: ${item.dataMateria || "-"} • 🕵️ Análise: ${item.dataAnalise || "-"}</small>
+      <strong>${escapeHtml(item.titulo || "")}</strong>
+      <a href="${escapeAttr(item.link || "")}" target="_blank">${escapeHtml(item.link || "")}</a>
+      ${item.obs ? `<small>📝 ${escapeHtml(item.obs)}</small>` : ""}
+      <small>${escapeHtml(dm)} • ${escapeHtml(da)}</small>
     `;
-    if(item.tipo==="positivo") positivo.appendChild(div);
-    if(item.tipo==="neutro") neutro.appendChild(div);
-    if(item.tipo==="negativo") negativo.appendChild(div);
+
+    if(item.tipo === "positivo") positivo.appendChild(div);
+    else if(item.tipo === "neutro") neutro.appendChild(div);
+    else if(item.tipo === "negativo") negativo.appendChild(div);
+  }
+}
+
+/* ===== EXPORTAÇÃO EXCEL (CSV pt-BR) ===== */
+function csvEscape(value) {
+  const v = (value ?? "").toString().replace(/\r?\n/g, " ");
+  return `"${v.replace(/"/g, '""')}"`;
+}
+
+function exportar(){
+  const sep = ";";
+  let csv = ["Tipo","Título","Link","Observações","Data da Matéria","Data da Análise","Autor"].join(sep);
+
+  // exporta já ordenado igual na tela
+  const sorted = [...dados].sort((a,b)=>{
+    const keyA = (a.dataAnalise || a.dataMateria || a.dataHora || "");
+    const keyB = (b.dataAnalise || b.dataMateria || b.dataHora || "");
+    return (""+keyB).localeCompare(""+keyA);
   });
+
+  for(const d of sorted){
+    csv += "\n" + [
+      csvEscape(d.tipo || ""),
+      csvEscape(d.titulo || ""),
+      csvEscape(d.link || ""),
+      csvEscape(d.obs || ""),
+      csvEscape(d.dataMateria || ""),
+      csvEscape(d.dataAnalise || ""),
+      csvEscape(d.autor || "")
+    ].join(sep);
+  }
+
+  // BOM para acentos no Excel
+  const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "clipping.csv";
+  a.click();
+}
+
+/* ===== Helpers ===== */
+function escapeHtml(str) {
+  return (str ?? "").toString()
+    .replaceAll("&","&amp;")
+    .replaceAll("<","&lt;")
+    .replaceAll(">","&gt;")
+    .replaceAll('"',"&quot;")
+    .replaceAll("'","&#039;");
+}
+function escapeAttr(str) {
+  return (str ?? "").toString().replaceAll('"', '%22').replaceAll("'", "%27");
 }
 </script>
 
