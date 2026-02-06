@@ -40,9 +40,9 @@ button:hover{ background:#eee; }
 .item a{ font-size:12px; color:#2563eb; word-break:break-all; }
 .item small{ display:block; color:#555; margin-top:3px; }
 
-.actions{ display:flex; gap:6px; margin-top:8px; }
+.actions{ margin-top:6px; }
 .actions button{
-  width:auto; padding:5px 8px; font-size:12px; margin-top:0;
+  width:auto; padding:4px 8px; font-size:12px;
   border-radius:6px;
 }
 .btnDel{ border-color:#fca5a5; }
@@ -81,9 +81,11 @@ button:hover{ background:#eee; }
     <div class="form">
       <h3>➕ Nova Matéria</h3>
 
-      <input id="autor" placeholder="Seu nome">
-
+      <input id="autor" placeholder="Seu nome (quem analisou)">
       <input id="titulo" placeholder="Título da matéria">
+
+      <input id="veiculo" placeholder="Veículo (ex: G1, Estadão)">
+      <input id="autoriaMateria" placeholder="Autoria da matéria">
 
       <label>📅 Data da matéria</label>
       <input type="date" id="dataMateria">
@@ -136,6 +138,15 @@ const SENHA_SITE = "clipping2026";
 
 let dados = [];
 
+function formatarData(v){
+  if(!v) return "-";
+  const d = new Date(v);
+  if(isNaN(d)) return v;
+  return String(d.getDate()).padStart(2,"0") + "/" +
+         String(d.getMonth()+1).padStart(2,"0") + "/" +
+         d.getFullYear();
+}
+
 function showStatus(msg, type="ok"){
   const el = document.getElementById("status");
   el.classList.remove("hidden");
@@ -145,54 +156,48 @@ function showStatus(msg, type="ok"){
 }
 
 function login(){
-  if(document.getElementById("senha").value !== SENHA_SITE){
+  if(senha.value !== SENHA_SITE){
     alert("Senha incorreta");
     return;
   }
-  document.getElementById("login").classList.add("hidden");
-  document.getElementById("app").classList.remove("hidden");
+  login.classList.add("hidden");
+  app.classList.remove("hidden");
   atualizar();
-  setInterval(atualizar, 15000);
-}
-
-async function apiPost(payload){
-  const resp = await fetch(API_URL, {
-    method: "POST",
-    headers: { "Content-Type": "text/plain;charset=utf-8" },
-    body: JSON.stringify(payload)
-  });
-  return resp.json();
 }
 
 async function salvar(){
   const payload = {
     token: API_TOKEN,
     action: "add",
-    autor: (autor.value || "").trim(),
-    titulo: (titulo.value || "").trim(),
-    link: (link.value || "").trim(),
-    obs: (obs.value || "").trim(),
+    autor: autor.value,
+    titulo: titulo.value,
+    link: link.value,
+    obs: obs.value,
     tipo: tipo.value,
-    dataMateria: dataMateria.value || "",
-    dataAnalise: dataAnalise.value || ""
+    dataMateria: dataMateria.value,
+    dataAnalise: dataAnalise.value,
+    veiculo: veiculo.value,
+    autoriaMateria: autoriaMateria.value
   };
 
   if(!payload.titulo || !payload.link){
-    showStatus("Preencha título e link.", "warn");
+    showStatus("Preencha título e link", "warn");
     return;
   }
 
-  try{
-    const out = await apiPost(payload);
-    if(out.ok){
-      showStatus("Salvo na nuvem ✅", "ok");
-      limpar();
-      await atualizar();
-    } else {
-      showStatus("Erro ao salvar: " + (out.error || "desconhecido"), "warn");
-    }
-  } catch(e){
-    showStatus("Falha de rede ao salvar.", "warn");
+  const resp = await fetch(API_URL,{
+    method:"POST",
+    headers:{ "Content-Type":"text/plain;charset=utf-8" },
+    body: JSON.stringify(payload)
+  });
+  const out = await resp.json();
+
+  if(out.ok){
+    showStatus("Salvo na nuvem ✅");
+    limpar();
+    atualizar();
+  } else {
+    showStatus("Erro ao salvar", "warn");
   }
 }
 
@@ -203,125 +208,67 @@ function limpar(){
 }
 
 async function atualizar(){
-  try{
-    const resp = await fetch(API_URL);
-    const out = await resp.json();
-    if(out.ok){
-      dados = Array.isArray(out.rows) ? out.rows : [];
-      render();
-    } else {
-      showStatus("Erro ao carregar: " + (out.error || "desconhecido"), "warn");
-    }
-  } catch(e){
-    showStatus("Falha de rede ao carregar.", "warn");
+  const resp = await fetch(API_URL);
+  const out = await resp.json();
+  if(out.ok){
+    dados = out.rows || [];
+    render();
   }
 }
 
 function render(){
-  positivo.innerHTML = "";
-  neutro.innerHTML = "";
-  negativo.innerHTML = "";
+  positivo.innerHTML = neutro.innerHTML = negativo.innerHTML = "";
 
-  // Ordena por dataAnalise > dataMateria > dataHora (desc)
-  const sorted = [...dados].sort((a,b)=>{
-    const keyA = (a.dataAnalise || a.dataMateria || a.dataHora || "");
-    const keyB = (b.dataAnalise || b.dataMateria || b.dataHora || "");
-    return (""+keyB).localeCompare(""+keyA);
-  });
-
-  for(const item of sorted){
+  dados.forEach(item=>{
     const div = document.createElement("div");
     div.className = "item";
 
-    const dm = item.dataMateria ? `📅 Matéria: ${item.dataMateria}` : "📅 Matéria: -";
-    const da = item.dataAnalise ? `🕵️ Análise: ${item.dataAnalise}` : "🕵️ Análise: -";
-    const obsHtml = item.obs ? `<small>📝 ${escapeHtml(item.obs)}</small>` : "";
+    const meta = [
+      item.veiculo ? `📰 ${item.veiculo}` : "",
+      item.autoriaMateria ? `✍️ ${item.autoriaMateria}` : ""
+    ].filter(Boolean).join(" • ");
 
     div.innerHTML = `
-      <strong>${escapeHtml(item.titulo || "")}</strong>
-      <a href="${escapeAttr(item.link || "")}" target="_blank">${escapeHtml(item.link || "")}</a>
-      ${obsHtml}
-      <small>${escapeHtml(dm)} • ${escapeHtml(da)}</small>
+      <strong>${item.titulo}</strong>
+      <a href="${item.link}" target="_blank">${item.link}</a>
+      ${meta ? `<small>${meta}</small>` : ""}
+      ${item.obs ? `<small>📝 ${item.obs}</small>` : ""}
+      <small>📅 Matéria: ${formatarData(item.dataMateria)} • 🕵️ Análise: ${formatarData(item.dataAnalise)}</small>
       <div class="actions">
-        <button class="btnDel" onclick="excluirItem('${escapeAttr(item.id)}')">🗑️ Excluir</button>
+        <button class="btnDel" onclick="excluir('${item.id}')">🗑️ Excluir</button>
       </div>
     `;
 
-    if(item.tipo === "positivo") positivo.appendChild(div);
-    else if(item.tipo === "neutro") neutro.appendChild(div);
-    else if(item.tipo === "negativo") negativo.appendChild(div);
-  }
+    if(item.tipo==="positivo") positivo.appendChild(div);
+    if(item.tipo==="neutro") neutro.appendChild(div);
+    if(item.tipo==="negativo") negativo.appendChild(div);
+  });
 }
 
-async function excluirItem(id){
-  if(!id){
-    showStatus("ID vazio (não dá pra excluir).", "warn");
-    return;
-  }
-  if(!confirm("Excluir esta matéria da nuvem?")) return;
-
-  try{
-    const out = await apiPost({ token: API_TOKEN, action: "delete", id });
-    if(out.ok){
-      showStatus("Excluído ✅", "ok");
-      await atualizar();
-    } else {
-      showStatus("Erro ao excluir: " + (out.error || "desconhecido"), "warn");
-    }
-  } catch(e){
-    showStatus("Falha de rede ao excluir.", "warn");
-  }
-}
-
-/* ===== EXPORTAÇÃO EXCEL (CSV pt-BR) ===== */
-function csvEscape(value) {
-  const v = (value ?? "").toString().replace(/\r?\n/g, " ");
-  return `"${v.replace(/"/g, '""')}"`;
+async function excluir(id){
+  if(!confirm("Excluir esta matéria?")) return;
+  await fetch(API_URL,{
+    method:"POST",
+    headers:{ "Content-Type":"text/plain;charset=utf-8" },
+    body: JSON.stringify({ token:API_TOKEN, action:"delete", id })
+  });
+  atualizar();
 }
 
 function exportar(){
-  const sep = ";";
-  let csv = ["Tipo","Título","Link","Observações","Data da Matéria","Data da Análise","Autor","ID"].join(sep);
-
-  const sorted = [...dados].sort((a,b)=>{
-    const keyA = (a.dataAnalise || a.dataMateria || a.dataHora || "");
-    const keyB = (b.dataAnalise || b.dataMateria || b.dataHora || "");
-    return (""+keyB).localeCompare(""+keyA);
+  let csv = "Tipo;Título;Veículo;Autoria;Link;Observações;Data Matéria;Data Análise;Autor\n";
+  dados.forEach(d=>{
+    csv += [
+      d.tipo,d.titulo,d.veiculo,d.autoriaMateria,d.link,d.obs,
+      formatarData(d.dataMateria),formatarData(d.dataAnalise),d.autor
+    ].map(v=>`"${(v||"").replace(/"/g,'""')}"`).join(";") + "\n";
   });
-
-  for(const d of sorted){
-    csv += "\n" + [
-      csvEscape(d.tipo || ""),
-      csvEscape(d.titulo || ""),
-      csvEscape(d.link || ""),
-      csvEscape(d.obs || ""),
-      csvEscape(d.dataMateria || ""),
-      csvEscape(d.dataAnalise || ""),
-      csvEscape(d.autor || ""),
-      csvEscape(d.id || "")
-    ].join(sep);
-  }
-
-  const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+  const blob = new Blob(["\uFEFF"+csv],{type:"text/csv;charset=utf-8;"});
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
   a.download = "clipping.csv";
   a.click();
 }
-
-/* ===== Helpers ===== */
-function escapeHtml(str) {
-  return (str ?? "").toString()
-    .replaceAll("&","&amp;")
-    .replaceAll("<","&lt;")
-    .replaceAll(">","&gt;")
-    .replaceAll('"',"&quot;")
-    .replaceAll("'","&#039;");
-}
-function escapeAttr(str) {
-  return (str ?? "").toString().replaceAll('"', '%22').replaceAll("'", "%27");
-}
 </script>
-
 </body>
 </html>
